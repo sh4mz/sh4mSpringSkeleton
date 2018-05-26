@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:p="http://www.springframework.org/schema/p" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:cache="http://www.springframework.org/schema/cache" xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:jaxws="http://cxf.apache.org/jaxws" xmlns:cxf="http://cxf.apache.org/core"
+	xmlns:jms="http://www.springframework.org/schema/jms" default-autowire="byName"
+	xsi:schemaLocation="http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-4.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+		http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache-4.0.xsd
+		http://cxf.apache.org/core http://cxf.apache.org/schemas/core.xsd
+		http://cxf.apache.org/jaxws http://cxf.apache.org/schemas/jaxws.xsd
+		http://www.springframework.org/schema/jms 
+      	http://www.springframework.org/schema/jms/spring-jms-4.1.xsd">
+
+
+	
+	<context:property-placeholder
+		location="classpath:common-db.properties,classpath:ldap.properties"/>
+
+	<bean id="contextSource" class="org.springframework.ldap.core.support.LdapContextSource" p:url="${ldap.url}" p:base="${ldap.base}" >
+			<property name="baseEnvironmentProperties">
+	        	<map>
+	            	<entry key="java.naming.referral">
+	                    <value>follow</value>
+	                </entry>
+	            </map>
+	        </property>
+	</bean>
+	 
+	<bean id="ldapTemplate" class="org.springframework.ldap.core.LdapTemplate">
+	    <property name="ignorePartialResultException" value="true"></property>
+        <constructor-arg ref="contextSource" />
+    </bean>
+    
+	<bean id="propVal"
+		class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+		<property name="locations">
+			<list>
+				<value>classpath:application.properties</value>
+			</list>
+		</property>
+	</bean>	   
+    <bean id="defaultDataSource" class="com.jolbox.bonecp.BoneCPDataSource"
+		destroy-method="close" p:driverClass="${jdbc.driverClassName}"
+		p:jdbcUrl="${jdbc.url}" p:username="${jdbc.user}" p:password="${jdbc.pass}"
+		p:maxConnectionsPerPartition="${partition.max.connections}"
+		p:minConnectionsPerPartition="${partition.min.connections}"
+		p:partitionCount="${partition.count}" p:acquireIncrement="${partition.acquire.incrementcount}"
+		p:statementsCacheSize="${statements.cache.size}"
+		p:idleMaxAgeInMinutes="${idle.max.age.minutes}" />
+
+	<!-- Spring bean configuration. Tell Spring to bounce off BoneCP -->
+	<bean id="dataSource"
+		class="org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy">
+		<property name="targetDataSource" ref="defaultDataSource" />
+	</bean>
+	
+	    
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	<bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	<!-- Below is interpreter DB -->
+	<!-- <bean id="interpreterDefaultDataSource" class="com.jolbox.bonecp.BoneCPDataSource"
+		destroy-method="close" p:driverClass="${interpreter.jdbc.driverClassName}"
+		p:jdbcUrl="${interpreter.jdbc.url}" p:username="${interpreter.jdbc.user}" p:password="${interpreter.jdbc.pass}"
+		p:maxConnectionsPerPartition="${interpreter.partition.max.connections}"
+		p:minConnectionsPerPartition="${interpreter.partition.min.connections}"
+		p:partitionCount="${interpreter.partition.count}" p:acquireIncrement="${interpreter.partition.acquire.incrementcount}"
+		p:statementsCacheSize="${interpreter.statements.cache.size}"
+		p:idleMaxAgeInMinutes="${interpreter.idle.max.age.minutes}" />
+
+	<bean id="interpreterDataSource"
+		class="org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy">
+		<property name="targetDataSource" ref="interpreterDefaultDataSource" />
+	</bean>
+
+		<bean id="interpreterJdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+		<property name="dataSource" ref="interpreterDataSource" />
+	</bean> -->
+		
+	
+	<bean id="persistenceExceptionTranslationPostProcessor"
+		class="org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor" />
+		
+	<bean id="validator"
+		class="org.springframework.validation.beanvalidation.LocalValidatorFactoryBean" />
+	
+	<bean id="sqlGenerator" class="net.sh4m.genericjdbc.util.SqlGenerator" />
+	<context:annotation-config />
+	
+	<context:component-scan base-package="net.sh4m.project.repository" />
+	<context:component-scan base-package="net.sh4m.project.service" />
+	<context:component-scan base-package="net.sh4m.project.core" />
+
+	<context:component-scan base-package="net.sh4m.genericjdbc.repository" />
+	<context:component-scan base-package="net.sh4m.project.subscriber" />
+	
+	
+	<bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver"/>
+	<bean id="executorService" class="java.util.concurrent.Executors"
+	    factory-method="newFixedThreadPool">
+	    <constructor-arg value="10" />
+	</bean>
+	<bean id="asyncEventBus" class="com.google.common.eventbus.AsyncEventBus"> <constructor-arg name="executor" ref="executorService" /> </bean>
+    <bean id="asyncEventBusSubscriberProcessor" class="net.sh4m.project.subscriber.AsyncEventBusSubscriberProcessor"/>
+
+</beans>
