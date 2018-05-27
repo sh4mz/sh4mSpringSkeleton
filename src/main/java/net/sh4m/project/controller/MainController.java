@@ -75,7 +75,7 @@ public class MainController {
 		return new FileSystemResource(CommonFileUtil.getFileFor(path,fileName)); 
     }
 	
-	@RequestMapping(value = RestURLConstant.MD5_ENCRYPT,
+	@RequestMapping(value = "/sec/md5",
             method = RequestMethod.GET, produces = {
                     MediaType.APPLICATION_XML_VALUE,
                     MediaType.APPLICATION_JSON_VALUE })
